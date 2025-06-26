@@ -1,0 +1,57 @@
+### Register a new user
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Romika Thangaraj",
+  "email": "romika@example.com",
+  "password": "securePassword123",
+  "phone_number": "9876543210"
+}
+### Create Digital Card
+POST http://localhost:5000/api/auth/create-card
+Content-Type: application/json
+
+{
+  "companyName": "NCS Tech",
+  "selectedTheme": 2,
+  "logo": "logo.png",
+  "firstName": "Romika",
+  "lastName": "Thangaraj",
+  "position": "Developer",
+  "phone": "9876543210",
+  "whatsapp": "9876543210",
+  "email": "romika@example.com",
+  "website": "https://ncs.com",
+  "about": "We build digital business cards.",
+  "facebook": "https://facebook.com/ncs",
+  "twitter": "https://twitter.com/ncs",
+  "instagram": "https://instagram.com/ncs",
+  "linkedin": "https://linkedin.com/in/ncs",
+  "youtube": "https://youtube.com/ncs",
+  "pinterest": "https://pinterest.com/ncs",
+  "paytm": "9876543210",
+  "googlepay": "9876543210",
+  "phonepe": "9876543210",
+  "bankName": "SBI",
+  "accountHolder": "Romika Thangaraj",
+  "accountNumber": "1234567890",
+  "ifsc": "SBIN0001234",
+  "gst": "29ABCDE1234F2Z5",
+  "address": "Chennai, Tamil Nadu",
+  "location": "Chennai",
+  "google_map": "https://goo.gl/maps/xyz123",
+  "established_date": "2020-01-01",
+  "products": [
+    {
+      "image": "product1.png",
+      "mrp": 499.99,
+      "selling_price": 349.99
+    },
+    {
+      "image": "product2.png",
+      "mrp": 999.00,
+      "selling_price": 799.00
+    }
+  ]
+}
