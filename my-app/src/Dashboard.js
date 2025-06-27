@@ -29,6 +29,7 @@ import {
   Briefcase,
   Camera,
 } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
 
 const features = [
   { icon: Phone, title: "One Click Call", description: "Direct phone calls", color: "#4f46e5", bgColor: "#e0e7ff" },
@@ -52,7 +53,19 @@ const businessTypes = [
   { icon: Camera, title: "Marketing Agencies", description: "Agencies with specialists in marketing and media.", color: "#f59e0b", bgColor: "#fef3c7" },
 ];
 
+
+
 const Index = () => {
+  const navigate = useNavigate();
+  const handleMakeCardClick = () => {
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+  if (isLoggedIn) {
+    navigate("/dashboard");
+  } else {
+    alert("Please login to create your card.");
+    navigate("/login");
+  }
+};
   const handleCall = () => window.open('tel:+919080809998', '_self');
   const handleWhatsApp = () => window.open('https://wa.me/919080809998', '_blank');
   const handleEmail = () => window.open('mailto:contact@nithraconsulting.com', '_self');
@@ -84,24 +97,25 @@ const Index = () => {
     <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 4 }}>
       Create what you need in Just 5 minutes !!
     </Typography>
-    <Button
-      variant="contained"
-      size="large"
-      sx={{
-        background: 'linear-gradient(to right, #9333ea, #3b82f6)',
-        color: 'white',
-        px: 4,
-        py: 1.5,
-        fontWeight: 600,
-        borderRadius: 2,
-        boxShadow: 4,
-        '&:hover': {
-          background: 'linear-gradient(to right, #7e22ce, #2563eb)',
-        },
-      }}
-    >
-      Make your Card
-    </Button>
+<Button
+  variant="contained"
+  size="large"
+  onClick={handleMakeCardClick}
+  sx={{
+    background: 'linear-gradient(to right, #9333ea, #3b82f6)',
+    color: 'white',
+    px: 4,
+    py: 1.5,
+    fontWeight: 600,
+    borderRadius: 2,
+    boxShadow: 4,
+    '&:hover': {
+      background: 'linear-gradient(to right, #7e22ce, #2563eb)',
+    },
+  }}
+>
+  Make your Card
+</Button>
 
     {/* Call-to-action Card */}
     <Box mt={8}>

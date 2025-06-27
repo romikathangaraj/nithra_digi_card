@@ -39,63 +39,75 @@ const SignInPage = () => {
     }));
   };
 
-  const handleAuth = async (e) => {
-    e.preventDefault();
-    try {
-      const endpoint = isSignUp
-        ? `${API_BASE_URL}/register`
-        : `${API_BASE_URL}/login`;
+ const handleAuth = async (e) => {
+  e.preventDefault();
+  try {
+    const endpoint = isSignUp
+      ? `${API_BASE_URL}/register`
+      : `${API_BASE_URL}/login`;
 
-      const payload = isSignUp
-        ? {
-            name: formData.name,
-            email: formData.email,
-            phone_number: formData.phone_number,
-            password: formData.password,
-          }
-        : {
-            email: formData.email,
-            password: formData.password,
-          };
+    const payload = isSignUp
+      ? {
+          name: formData.name,
+          email: formData.email,
+          phone_number: formData.phone_number,
+          password: formData.password,
+        }
+      : {
+          email: formData.email,
+          password: formData.password,
+        };
 
-      const { data } = await axios.post(endpoint, payload);
+    const { data } = await axios.post(endpoint, payload);
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      setUser(data.user);
+    const { id, first_name, image } = data.user;
 
-      alert(data.message);
-      navigate(data.user.role === "admin" ? "/admin-dashboard" : "/dashboard");
-    } catch (error) {
-      alert(error.response?.data?.error || "Authentication failed!");
-    }
-  };
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem(
+      "user",
+      JSON.stringify({
+        id,
+        firstName: first_name,
+        image: image || "", // default empty string if no image
+      })
+    );
 
-  const handleGoogleSignIn = async (credentialResponse) => {
-    try {
-      const { data } = await axios.post(`${API_BASE_URL}/google-signin`, {
-        token: credentialResponse.credential,
-      });
+    window.dispatchEvent(new Event("storage")); // ✅ notify Header
 
-      const decoded = jwtDecode(credentialResponse.credential);
+    alert(data.message);
+    navigate(data.user.role === "admin" ? "/admin-dashboard" : "/dashboard");
+  } catch (error) {
+    alert(error.response?.data?.error || "Authentication failed!");
+  }
+};
 
-      const userData = {
-        name: decoded.name,
-        email: decoded.email,
-        picture: decoded.picture || "",
-        role: data.user.role || "user",
-      };
+const handleGoogleSignIn = async (credentialResponse) => {
+  try {
+    const { data } = await axios.post(`${API_BASE_URL}/google-signin`, {
+      token: credentialResponse.credential,
+    });
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(userData));
-      setUser(userData);
+    const decoded = jwtDecode(credentialResponse.credential);
 
-      alert("Google Sign-In Successful!");
-      navigate(userData.role === "admin" ? "/admin-dashboard" : "/dashboard");
-    } catch (error) {
-      alert("Google Sign-In failed!");
-    }
-  };
+    const userData = {
+      id: data.user.id,
+      firstName: decoded.name,
+      image: decoded.picture || "",
+    };
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("user", JSON.stringify(userData));
+
+    window.dispatchEvent(new Event("storage")); // ✅ notify Header
+
+    alert("Google Sign-In Successful!");
+    navigate(data.user.role === "admin" ? "/admin-dashboard" : "/dashboard");
+  } catch (error) {
+    alert("Google Sign-In failed!");
+  }
+};
 
   return (
     <Container component="main" maxWidth="xs">

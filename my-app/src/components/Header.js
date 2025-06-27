@@ -14,11 +14,13 @@ import {
   Divider,
   Snackbar,
   Alert,
+  Avatar,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
   Phone,
-  Mail,
   WhatsApp,
   Login as LoginIcon,
   Logout as LogoutIcon,
@@ -27,13 +29,26 @@ import {
 const Header = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const loginStatus = localStorage.getItem('isLoggedIn');
-    setIsLoggedIn(loginStatus === 'true');
+    const checkLogin = () => {
+      const loginStatus = localStorage.getItem('isLoggedIn') === 'true';
+      setIsLoggedIn(loginStatus);
+      const storedUser = localStorage.getItem('user');
+      setUser(storedUser ? JSON.parse(storedUser) : null);
+    };
+
+    checkLogin();
+    window.addEventListener('storage', checkLogin);
+
+    return () => {
+      window.removeEventListener('storage', checkLogin);
+    };
   }, [location]);
 
   const handleCall = () => {
@@ -44,15 +59,13 @@ const Header = () => {
     window.open('https://wa.me/919080809998', '_blank');
   };
 
-  const handleEmail = () => {
-    window.open('mailto:contact@nithraconsulting.com', '_self');
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userEmail');
+    localStorage.removeItem('user');
     setIsLoggedIn(false);
-    setSnackbarOpen(true); // Show MUI toast
+    setUser(null);
+    setAnchorEl(null);
+    setSnackbarOpen(true);
     navigate('/');
   };
 
@@ -68,6 +81,9 @@ const Header = () => {
     { label: 'Products', path: '/products' },
     { label: 'Contact', path: '/contact' },
   ];
+
+  const openMenu = (e) => setAnchorEl(e.currentTarget);
+  const closeMenu = () => setAnchorEl(null);
 
   return (
     <>
@@ -87,17 +103,11 @@ const Header = () => {
                 mr: 1,
               }}
             >
-              <Typography color="white" fontWeight="bold">
-                N
-              </Typography>
+              <Typography color="white" fontWeight="bold">N</Typography>
             </Box>
             <Box>
-              <Typography variant="h6" color="text.primary">
-                Nithra
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Consulting Services
-              </Typography>
+              <Typography variant="h6" color="text.primary">Nithra</Typography>
+              <Typography variant="caption" color="text.secondary">Consulting Services</Typography>
             </Box>
           </Box>
 
@@ -133,21 +143,23 @@ const Header = () => {
             >
               WhatsApp
             </Button>
-            {isLoggedIn ? (
-              <Button variant="outlined" color="error" startIcon={<LogoutIcon />} onClick={handleLogout}>
-                Logout
-              </Button>
+            {isLoggedIn && user ? (
+              <>
+                <IconButton onClick={openMenu}>
+                  <Avatar src={user.image || ''}>
+                    {user.firstName?.[0] || 'U'}
+                  </Avatar>
+                </IconButton>
+                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
+                  <MenuItem onClick={() => { navigate('/dashboard'); closeMenu(); }}>My Profile</MenuItem>
+                  <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                </Menu>
+              </>
             ) : (
               <Button variant="outlined" component={Link} to="/login" startIcon={<LoginIcon />}>
                 Login
               </Button>
             )}
-            <Button
-              variant="contained"
-              sx={{ backgroundColor: '#7c3aed', '&:hover': { backgroundColor: '#6b21a8' } }}
-            >
-              Get Started
-            </Button>
           </Box>
 
           {/* Mobile Menu Button */}
@@ -193,18 +205,12 @@ const Header = () => {
                   Login
                 </Button>
               )}
-              <Button
-                variant="contained"
-                sx={{ backgroundColor: '#7c3aed', '&:hover': { backgroundColor: '#6b21a8' } }}
-              >
-                Get Started
-              </Button>
             </Box>
           </Box>
         </Drawer>
       </AppBar>
 
-      {/* Snackbar for Logout Toast */}
+      {/* Snackbar for Logout */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={3000}

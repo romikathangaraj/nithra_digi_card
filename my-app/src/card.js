@@ -75,11 +75,11 @@ const CardCreationWizard = ({ onClose }) => {
     'Preview Card'
   ];
   const API_BASE_URL = "http://localhost:5000/api/auth";
-
+  const token = localStorage.getItem("token");
 
   const generateCardUrl = (companyName) => {
     const sanitized = companyName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-    return `ncsdigitalcard.com/${sanitized}`;
+    return `${sanitized}`;
   };
 
   const handleChange = (field, value) => {
@@ -115,25 +115,61 @@ const handleSubmit = async () => {
   if (!validateStep()) return;
 
   const url = generateCardUrl(formData.companyName);
+  const token = localStorage.getItem("token");
 
-  // ✅ Get user_id from localStorage
-  const user = JSON.parse(localStorage.getItem("user"));
-  const user_id =  user?.id; // depends on how you named it in your backend
-
-  if (!user_id) {
+  if (!token) {
     toast({ title: "Error", description: "User not logged in." });
     return;
   }
 
-  const cardPayload = {
-    ...formData,
-    user_id, // ✅ attach user_id to the request
-    name: `${formData.firstName} ${formData.lastName}`,
-    url_slug: url,
-  };
+  const data = new FormData();
+  data.append('companyName', formData.companyName);
+  data.append('selectedTheme', formData.selectedTheme);
+  data.append('firstName', formData.firstName);
+  data.append('lastName', formData.lastName);
+  data.append('position', formData.position);
+  data.append('phone', formData.phone);
+  data.append('whatsapp', formData.whatsapp);
+  data.append('email', formData.email);
+  data.append('website', formData.website);
+  data.append('about', formData.about);
+  data.append('facebook', formData.facebook);
+  data.append('twitter', formData.twitter);
+  data.append('instagram', formData.instagram);
+  data.append('linkedin', formData.linkedin);
+  data.append('youtube', formData.youtube);
+  data.append('pinterest', formData.pinterest);
+  data.append('paytm', formData.paytm);
+  data.append('googlepay', formData.googlepay);
+  data.append('phonepe', formData.phonepe);
+  data.append('bankName', formData.bankName);
+  data.append('accountHolder', formData.accountHolder);
+  data.append('accountNumber', formData.accountNumber);
+  data.append('ifsc', formData.ifsc);
+  data.append('established_date', formData.established_date);
+  data.append('address', formData.address);
+  data.append('location', formData.location);
+  data.append('gst', formData.gst);
+  data.append('google_map', formData.googleMap);
+  data.append('url_slug', url);
+
+  // ✅ Append product images and names
+  formData.products.forEach((product, index) => {
+    if (product.image) {
+      data.append(`product${index + 1}_img`, product.image);
+    }
+    if (product.name) {
+      data.append(`product${index + 1}_name`, product.name);
+    }
+  });
 
   try {
-    const response = await axios.post(`${API_BASE_URL}/create-card`, cardPayload);
+    const response = await axios.post(`${API_BASE_URL}/create-card`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (response.data.success) {
       setCardCreated(true);
@@ -149,7 +185,6 @@ const handleSubmit = async () => {
       });
     }
   } catch (err) {
-    
     console.error('Axios error:', err);
     toast({
       title: 'Error',
@@ -157,6 +192,8 @@ const handleSubmit = async () => {
     });
   }
 };
+
+
 
 
 
@@ -229,32 +266,49 @@ const handleSubmit = async () => {
                       size="small"
                       sx={{ mb: 1 }}
                     />
-                    <Box
-                      component="label"
-                      htmlFor={`product-image-${i}`}
-                      sx={{
-                        border: '2px dashed #ccc',
-                        borderRadius: '8px',
-                        padding: 1,
-                        display: 'block',
-                        cursor: 'pointer',
-                        mb: 1
-                      }}
-                    >
-                      <Upload sx={{ fontSize: 30, color: '#9c27b0' }} />
-                    </Box>
-                    <input
-                      type="file"
-                      id={`product-image-${i}`}
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        const updated = [...formData.products];
-                        updated[i] = { ...updated[i], image: file };
-                        handleChange('products', updated);
-                      }}
-                    />
+                  <Box
+  component="label"
+  htmlFor={`product-image-${i}`}
+  sx={{
+    border: '2px dashed #ccc',
+    borderRadius: '8px',
+    padding: 1,
+    display: 'block',
+    cursor: 'pointer',
+    mb: 1
+  }}
+>
+  {/* ✅ Show preview for newly uploaded or saved image */}
+  {formData.products[i]?.image && typeof formData.products[i].image !== 'string' ? (
+    <img
+      src={URL.createObjectURL(formData.products[i].image)}
+      alt="preview"
+      style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4 }}
+    />
+  ) : formData.products[i]?.image && typeof formData.products[i].image === 'string' ? (
+    <img
+      src={`http://localhost:5000${formData.products[i].image}`}
+      alt="product"
+      style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 4 }}
+    />
+  ) : (
+    <Upload sx={{ fontSize: 30, color: '#9c27b0' }} />
+  )}
+</Box>
+
+<input
+  type="file"
+  id={`product-image-${i}`}
+  accept="image/*"
+  style={{ display: 'none' }}
+  onChange={(e) => {
+    const file = e.target.files[0];
+    const updated = [...formData.products];
+    updated[i] = { ...updated[i], image: file };
+    handleChange('products', updated);
+  }}
+/>
+
                   </Card>
                 </Grid>
               ))}

@@ -10,6 +10,7 @@ import AuthCard from './Login';
 import Dashboard from './UserDashboard';
 import CardCreationWizard from './card'
 import { Card } from '@mui/material';
+import CardView from './cardView';
 
 
 
@@ -27,6 +28,8 @@ function App() {
           <Route path="/login" element={<AuthCard />} />
            <Route path="/dashboard" element={< Dashboard/>} />
           <Route path="/card" element={<CardCreationWizard/>} />
+          <Route path="/card/:slug" element={<CardView />} />
+
         </Routes>
       </div>
     </Router>
