@@ -3,15 +3,11 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const dotenv = require("dotenv");
-const db = require('../db'); // make sure the path is correct
+const db = require('../db');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs'); // ✅ Add this
-const authenticateToken = require("../middleware/authMiddleware"); // adjust path if needed
-
-
- // or configure `diskStorage()` if saving to disk
-
+const fs = require('fs');
+const authenticateToken = require("../middleware/authMiddleware");
 
 const {
   findUserByEmail,
@@ -105,9 +101,6 @@ router.post("/google-signin", async (req, res) => {
   }
 });
 
-
-
-// Storage setup for multer
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = path.join(__dirname, '..', 'uploads');
@@ -123,10 +116,13 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Create digital card
-router.post('/create-card',authenticateToken, upload.any(), async (req, res) => {
+router.post('/create-card', authenticateToken, upload.any(), async (req, res) => {
   try {
     const files = req.files;
     const body = req.body;
+
+    const logoFile = files.find(f => f.fieldname === 'logo');
+    const logoPath = logoFile ? `/uploads/${logoFile.filename}` : null;
 
     const products = [];
     for (let i = 0; i < 10; i++) {
@@ -143,7 +139,7 @@ router.post('/create-card',authenticateToken, upload.any(), async (req, res) => 
       req.user.id,
       body.companyName,
       body.selectedTheme,
-      null, // logo
+      logoPath,
       `${body.firstName} ${body.lastName}`,
       body.position,
       body.phone,
@@ -160,7 +156,7 @@ router.post('/create-card',authenticateToken, upload.any(), async (req, res) => 
       body.linkedin,
       body.youtube,
       body.pinterest,
-      null, null, null, null, null, // link1-5
+      null, null, null, null, null,
       body.google_map,
       body.bankName,
       body.accountHolder,
@@ -170,7 +166,7 @@ router.post('/create-card',authenticateToken, upload.any(), async (req, res) => 
       body.googlepay,
       body.phonepe,
       body.paytm,
-      ...products.flatMap(p => [p.image, null, null]), // image, mrp, selling_price
+      ...products.flatMap(p => [p.image, null, null]),
       products.length,
       body.url_slug
     ];
@@ -211,12 +207,8 @@ router.post('/create-card',authenticateToken, upload.any(), async (req, res) => 
   }
 });
 
-
-
-
-
 router.get("/user-cards", authenticateToken, (req, res) => {
-  const userId = req.user.id; // pulled from JWT
+  const userId = req.user.id;
   const sql = "SELECT card_id, company_name, url_slug FROM card WHERE user_id = ?";
   db.query(sql, [userId], (err, results) => {
     if (err) return res.status(500).json({ error: "DB Error" });
@@ -224,8 +216,6 @@ router.get("/user-cards", authenticateToken, (req, res) => {
   });
 });
 
-
-// GET /api/card/:slug
 router.get("/card/:slug", (req, res) => {
   const { slug } = req.params;
   const sql = "SELECT * FROM card WHERE url_slug = ?";
@@ -235,7 +225,5 @@ router.get("/card/:slug", (req, res) => {
     res.json({ card: results[0] });
   });
 });
-
-
 
 module.exports = router;

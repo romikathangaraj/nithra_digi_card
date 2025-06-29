@@ -2,7 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { Typography, Card, CardContent } from '@mui/material';
+import { Typography, Box } from '@mui/material';
+
+// ⬇️ Import your templates
+import Template1 from './components/Template1';
+import Template2 from './components/Template2';
 
 const CardView = () => {
   const { slug } = useParams();
@@ -16,17 +20,22 @@ const CardView = () => {
 
   if (!card) return <Typography>Loading...</Typography>;
 
+  // ⬇️ Choose the template based on theme_id
+  const renderTemplate = () => {
+    switch (card.theme_id) {
+      case 1:
+        return <Template1 card={card} />;
+      case 2:
+        return <Template2 card={card} />;
+      default:
+        return <Typography>Invalid Theme</Typography>;
+    }
+  };
+
   return (
-    <Card sx={{ maxWidth: 600, margin: 'auto', mt: 5, p: 2 }}>
-      <CardContent>
-        <Typography variant="h5">{card.first_name} {card.last_name}</Typography>
-        <Typography variant="subtitle1">{card.position}</Typography>
-        <Typography variant="body2">Company: {card.company_name}</Typography>
-        <Typography variant="body2">Phone: {card.phone}</Typography>
-        <Typography variant="body2">Email: {card.email}</Typography>
-        {/* Add socials, logo, about etc. */}
-      </CardContent>
-    </Card>
+    <Box sx={{ maxWidth: 800, mx: 'auto', mt: 5 }}>
+      {renderTemplate()}
+    </Box>
   );
 };
 

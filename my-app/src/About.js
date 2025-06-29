@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box, Typography, Card, CardContent, Avatar, Container } from '@mui/material';
 import { Users, Target, Award, Heart } from 'lucide-react';
-
 const About = () => {
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb' }}>
@@ -154,5 +153,4 @@ const About = () => {
     </Box>
   );
 };
-
 export default About;

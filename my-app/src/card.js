@@ -41,6 +41,7 @@ const CardCreationWizard = ({ onClose }) => {
     lastName: '',
     position: '',
     phone: '',
+    logo: null,
     whatsapp: '',
     email: '',
     website: '',
@@ -124,12 +125,14 @@ const handleSubmit = async () => {
 
   const data = new FormData();
   data.append('companyName', formData.companyName);
+    data.append('logo', formData.logo);
   data.append('selectedTheme', formData.selectedTheme);
   data.append('firstName', formData.firstName);
   data.append('lastName', formData.lastName);
   data.append('position', formData.position);
   data.append('phone', formData.phone);
   data.append('whatsapp', formData.whatsapp);
+
   data.append('email', formData.email);
   data.append('website', formData.website);
   data.append('about', formData.about);
@@ -201,16 +204,51 @@ const handleSubmit = async () => {
     switch (currentStep) {
       case 1:
         return (
-          <TextField
-            fullWidth
-            label="Company Name"
-            value={formData.companyName}
-            onChange={(e) => handleChange('companyName', e.target.value)}
-            helperText={`URL will be: ${generateCardUrl(formData.companyName)}`}
-          />
+         <Grid container spacing={2}>
+  <Grid item xs={12}>
+    <TextField
+      fullWidth
+      label="Company Name"
+      value={formData.companyName}
+      onChange={(e) => handleChange('companyName', e.target.value)}
+      helperText={`URL will be: ${generateCardUrl(formData.companyName)}`}
+    />
+  </Grid>
+
+  <Grid item xs={12}>
+    <Typography variant="subtitle2">Upload Company Logo (optional)</Typography>
+    <input
+      type="file"
+      accept="image/*"
+      onChange={(e) => handleChange('logo', e.target.files[0])}
+    />
+  </Grid>
+</Grid>
+
         );
-      case 2:
-        return <DummyThemeSelector selectedTheme={formData.selectedTheme} onThemeSelect={(t) => handleChange('selectedTheme', t)} />;
+     // Inside renderStep() case 2
+case 2:
+  return (
+    <Grid container spacing={2}>
+      <Grid item xs={6}>
+        <Card
+          sx={{ p: 2, cursor: 'pointer', border: formData.selectedTheme === 1 ? '2px solid blue' : '1px solid gray' }}
+          onClick={() => handleChange('selectedTheme', 1)}
+        >
+          <Typography variant="h6">Classic Blue (Template 1)</Typography>
+        </Card>
+      </Grid>
+      <Grid item xs={6}>
+        <Card
+          sx={{ p: 2, cursor: 'pointer', border: formData.selectedTheme === 2 ? '2px solid green' : '1px solid gray' }}
+          onClick={() => handleChange('selectedTheme', 2)}
+        >
+          <Typography variant="h6">Green Boxed (Template 2)</Typography>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+
       case 3:
         return (
           <Grid container spacing={2}>
