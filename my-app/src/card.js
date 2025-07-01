@@ -71,6 +71,7 @@ const CardCreationWizard = ({ onClose }) => {
     'Select Template',
     'Company Details',
     'Social Links',
+    'youtube videos',
     'Payment Options',
     'Products & Services',
     'Preview Card'
@@ -102,7 +103,7 @@ const CardCreationWizard = ({ onClose }) => {
     if (!formData.established_date) newErrors.established_date = 'Date is required';
   }
 
-  if (currentStep === 5) {
+  if (currentStep === 6) {
     if (!formData.bankName.trim()) newErrors.bankName = 'Bank name is required';
     if (!formData.accountHolder.trim()) newErrors.accountHolder = 'Account holder is required';
     if (!formData.accountNumber.trim()) newErrors.accountNumber = 'Account number is required';
@@ -155,6 +156,10 @@ const handleSubmit = async () => {
   data.append('gst', formData.gst);
   data.append('google_map', formData.googleMap);
   data.append('url_slug', url);
+  formData.videos.forEach((link, index) => {
+  data.append(`video${index + 1}`, link);
+});
+
 
   // ✅ Append product images and names
   formData.products.forEach((product, index) => {
@@ -272,7 +277,28 @@ case 2:
             <Grid item xs={12}><TextField label="Google Map Link (Optional)" fullWidth value={formData.googleMap} onChange={(e) => handleChange('googleMap', e.target.value)} /></Grid>
           </Grid>
         );
-      case 5:
+
+        case 5:
+  return (
+    <Grid container spacing={2}>
+      {formData.videos.map((video, idx) => (
+        <Grid item xs={12} key={idx}>
+          <TextField
+            fullWidth
+            label={`YouTube Video Link ${idx + 1}`}
+            value={video}
+            onChange={(e) => {
+              const updated = [...formData.videos];
+              updated[idx] = e.target.value;
+              handleChange('videos', updated);
+            }}
+          />
+        </Grid>
+      ))}
+    </Grid>
+  );
+
+      case 6:
         return (
           <Grid container spacing={2}>
             <Grid item xs={12}><TextField label="Bank Name" fullWidth required value={formData.bankName} onChange={(e) => handleChange('bankName', e.target.value)} /></Grid>
@@ -282,7 +308,7 @@ case 2:
             <Grid item xs={12}><TextField label="GPay (Optional)" fullWidth value={formData.googlepay} onChange={(e) => handleChange('googlepay', e.target.value)} /></Grid>
           </Grid>
         );
-      case 6:
+      case 7:
         return (
           <>
             <Typography align="center" mb={2} color="error">(Upload images within 250 KB each image)</Typography>
@@ -353,7 +379,7 @@ case 2:
             </Grid>
           </>
         );
-      case 7:
+      case 8:
         return (
           <Box textAlign="center">
             <Typography variant="h6">Preview</Typography>

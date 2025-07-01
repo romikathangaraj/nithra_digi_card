@@ -222,7 +222,25 @@ router.get("/card/:slug", (req, res) => {
   db.query(sql, [slug], (err, results) => {
     if (err) return res.status(500).json({ error: "Database error" });
     if (results.length === 0) return res.status(404).json({ error: "Card not found" });
-    res.json({ card: results[0] });
+
+    const card = results[0];
+
+    // Construct products array
+    const products = [];
+    for (let i = 0; i < 10; i++) {
+      const imgField = `product${i + 1}_img`;
+      const nameField = `product${i + 1}_name`; // optional if you store names
+      if (card[imgField]) {
+        products.push({
+          name: card[nameField] || `Product ${i + 1}`,
+          image: card[imgField]
+        });
+      }
+    }
+
+    card.products = products;
+
+    res.json({ card });
   });
 });
 

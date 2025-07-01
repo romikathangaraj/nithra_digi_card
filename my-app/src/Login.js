@@ -7,6 +7,8 @@ import {
   TextField,
   Box,
   Avatar,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import axios from "axios";
@@ -25,6 +27,12 @@ const SignInPage = () => {
     password: "",
   });
   const [user, setUser] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success", // "success" | "error"
+  });
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,75 +47,89 @@ const SignInPage = () => {
     }));
   };
 
- const handleAuth = async (e) => {
-  e.preventDefault();
-  try {
-    const endpoint = isSignUp
-      ? `${API_BASE_URL}/register`
-      : `${API_BASE_URL}/login`;
+  const showSnackbar = (message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
+  };
 
-    const payload = isSignUp
-      ? {
-          name: formData.name,
-          email: formData.email,
-          phone_number: formData.phone_number,
-          password: formData.password,
-        }
-      : {
-          email: formData.email,
-          password: formData.password,
-        };
+  const handleCloseSnackbar = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
 
-    const { data } = await axios.post(endpoint, payload);
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    try {
+      const endpoint = isSignUp
+        ? `${API_BASE_URL}/register`
+        : `${API_BASE_URL}/login`;
 
-    const { id, first_name, image } = data.user;
+      const payload = isSignUp
+        ? {
+            name: formData.name,
+            email: formData.email,
+            phone_number: formData.phone_number,
+            password: formData.password,
+          }
+        : {
+            email: formData.email,
+            password: formData.password,
+          };
 
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem(
-      "user",
-      JSON.stringify({
-        id,
-        firstName: first_name,
-        image: image || "", // default empty string if no image
-      })
-    );
+      const { data } = await axios.post(endpoint, payload);
 
-    window.dispatchEvent(new Event("storage")); // ✅ notify Header
+      const { id, first_name, image } = data.user;
 
-    alert(data.message);
-    navigate(data.user.role === "admin" ? "/admin-dashboard" : "/dashboard");
-  } catch (error) {
-    alert(error.response?.data?.error || "Authentication failed!");
-  }
-};
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          id,
+          firstName: first_name,
+          image: image || "",
+        })
+      );
 
-const handleGoogleSignIn = async (credentialResponse) => {
-  try {
-    const { data } = await axios.post(`${API_BASE_URL}/google-signin`, {
-      token: credentialResponse.credential,
-    });
+      window.dispatchEvent(new Event("storage"));
 
-    const decoded = jwtDecode(credentialResponse.credential);
+     showSnackbar(data.message, "success");
+setTimeout(() => {
+  navigate("/dashboard");
+}, 1500); // 1.5 seconds delay
 
-    const userData = {
-      id: data.user.id,
-      firstName: decoded.name,
-      image: decoded.picture || "",
-    };
+    } catch (error) {
+      showSnackbar(error.response?.data?.error || "Authentication failed!", "error");
+    }
+  };
 
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("user", JSON.stringify(userData));
+  const handleGoogleSignIn = async (credentialResponse) => {
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/google-signin`, {
+        token: credentialResponse.credential,
+      });
 
-    window.dispatchEvent(new Event("storage")); // ✅ notify Header
+      const decoded = jwtDecode(credentialResponse.credential);
 
-    alert("Google Sign-In Successful!");
-    navigate(data.user.role === "admin" ? "/admin-dashboard" : "/dashboard");
-  } catch (error) {
-    alert("Google Sign-In failed!");
-  }
-};
+      const userData = {
+        id: data.user.id,
+        firstName: decoded.name,
+        image: decoded.picture || "",
+      };
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("user", JSON.stringify(userData));
+
+      window.dispatchEvent(new Event("storage"));
+
+showSnackbar("Google Sign-In Successful!", "success");
+setTimeout(() => {
+  navigate(data.user.role === "admin" ? "/admin-dashboard" : "/dashboard");
+}, 1500);
+
+    } catch (error) {
+      showSnackbar("Google Sign-In failed!", "error");
+    }
+  };
 
   return (
     <Container component="main" maxWidth="xs">
@@ -190,7 +212,7 @@ const handleGoogleSignIn = async (credentialResponse) => {
         <GoogleOAuthProvider clientId={CLIENT_ID}>
           <GoogleLogin
             onSuccess={handleGoogleSignIn}
-            onError={() => alert("Google Sign-In Error")}
+            onError={() => showSnackbar("Google Sign-In Error", "error")}
           />
         </GoogleOAuthProvider>
 
@@ -205,6 +227,17 @@ const handleGoogleSignIn = async (credentialResponse) => {
           </Box>
         )}
       </Paper>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
