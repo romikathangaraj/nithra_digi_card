@@ -76,18 +76,19 @@ const SignInPage = () => {
 
       const { data } = await axios.post(endpoint, payload);
 
-      const { id, first_name, image } = data.user;
+      const { id, first_name, image,email } = data.user;
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          id,
-          firstName: first_name,
-          image: image || "",
-        })
-      );
+  localStorage.setItem(
+  "user",
+  JSON.stringify({
+    id,
+    firstName: first_name,
+    email: email,        // ✅ Add this line
+    image: image || "",
+  })
+);
 
       window.dispatchEvent(new Event("storage"));
 

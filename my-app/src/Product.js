@@ -42,42 +42,6 @@ const Products = () => {
       rating: 4.9,
       description: "Advanced digital card with gallery, videos, products showcase, and lead forms.",
       features: ["All Basic Features", "Photo Gallery", "Video Integration", "Product Showcase", "Lead Forms"]
-    },
-    {
-      id: 3,
-      name: "Mini E-commerce Website",
-      price: "₹10,000",
-      image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=300&h=200&fit=crop",
-      rating: 5.0,
-      description: "Complete mini website with online store, payment integration, and inventory management.",
-      features: ["Online Store", "Payment Gateway", "Inventory Management", "Order Tracking", "Customer Support"]
-    },
-    {
-      id: 4,
-      name: "Corporate Digital Identity",
-      price: "₹15,000",
-      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=300&h=200&fit=crop",
-      rating: 4.7,
-      description: "Complete corporate solution with multiple team cards, analytics, and brand management.",
-      features: ["Team Cards", "Analytics Dashboard", "Brand Management", "Custom Domain", "Priority Support"]
-    },
-    {
-      id: 5,
-      name: "Restaurant Digital Menu",
-      price: "₹8,000",
-      image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop",
-      rating: 4.6,
-      description: "Interactive digital menu with online ordering, table booking, and customer reviews.",
-      features: ["Digital Menu", "Online Ordering", "Table Booking", "Customer Reviews", "QR Code Integration"]
-    },
-    {
-      id: 6,
-      name: "Healthcare Professional Card",
-      price: "₹7,000",
-      image: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=300&h=200&fit=crop",
-      rating: 4.8,
-      description: "Specialized card for healthcare professionals with appointment booking and service details.",
-      features: ["Appointment Booking", "Service Details", "Patient Reviews", "Location Integration", "Emergency Contact"]
     }
   ];
 
@@ -121,28 +85,10 @@ const Products = () => {
                     ))}
                   </Box>
                 </CardContent>
-                <CardActions sx={{ px: 2, pb: 2 }}>
-                  <Button fullWidth variant="contained" startIcon={<ShoppingCart />}>Order Now</Button>
-                  <Button variant="outlined" startIcon={<Eye />} />
-                </CardActions>
               </Card>
             </Grid>
           ))}
         </Grid>
-
-        <Box textAlign="center" mt={8}>
-          <Paper elevation={2} sx={{ p: 5, maxWidth: 600, mx: 'auto' }}>
-            <Typography variant="h5" fontWeight="bold" gutterBottom>
-              Need Something Custom?
-            </Typography>
-            <Typography variant="body1" color="text.secondary" paragraph>
-              We offer custom solutions tailored to your specific business needs. Contact us to discuss your requirements and get a personalized quote.
-            </Typography>
-            <Button variant="contained" color="primary">
-              Request Custom Solution
-            </Button>
-          </Paper>
-        </Box>
       </Container>
     </Box>
   );

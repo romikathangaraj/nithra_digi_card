@@ -40,6 +40,8 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/card" element={<CardCreationWizard />} />
           <Route path="/card/:slug" element={<CardView />} />
+          <Route path="/card/edit/:url_slug" element={<CardCreationWizard />} />
+
         </Routes>
       </Layout>
     </Router>

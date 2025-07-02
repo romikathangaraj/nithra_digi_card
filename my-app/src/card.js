@@ -19,17 +19,22 @@ import Upload from '@mui/icons-material/CloudUpload';
 import Copy from '@mui/icons-material/ContentCopy';
 import ExternalLink from '@mui/icons-material/OpenInNew';
 import axios from 'axios';
-const DummyThemeSelector = ({ selectedTheme, onThemeSelect }) => (
-  <Box>
-    <Typography variant="body2">[Theme selector placeholder]</Typography>
-  </Box>
-);
+import { useNavigate } from 'react-router-dom';
+import Template1 from './assests/template1.png';
+import Template2 from './assests/template2.png';
+import Template3 from './assests/template3.png';
+import { useParams } from 'react-router-dom';
+import { useEffect} from 'react';
 
 const useToast = () => ({
   toast: ({ title, description }) => alert(`${title}\n${description}`),
 });
 
+
 const CardCreationWizard = ({ onClose }) => {
+  const navigate = useNavigate();
+const { url_slug } = useParams();
+const isEdit = !!url_slug;   
   const [currentStep, setCurrentStep] = useState(1);
   const [cardCreated, setCardCreated] = useState(false);
   const [cardUrl, setCardUrl] = useState('');
@@ -37,6 +42,9 @@ const CardCreationWizard = ({ onClose }) => {
   const [formData, setFormData] = useState({
     companyName: '',
     selectedTheme: 1,
+      templateType: 'Basic',     // Add this line
+  templatePrice: 2000,       // Add this line
+
     firstName: '',
     lastName: '',
     position: '',
@@ -55,6 +63,7 @@ const CardCreationWizard = ({ onClose }) => {
     paytm: '',
     googlepay: '',
     phonepe: '',
+    address: '',
     bankName: '',
     accountHolder: '',
     accountNumber: '',
@@ -79,61 +88,225 @@ const CardCreationWizard = ({ onClose }) => {
   const API_BASE_URL = "http://localhost:5000/api/auth";
   const token = localStorage.getItem("token");
 
-  const generateCardUrl = (companyName) => {
-    const sanitized = companyName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-    return `${sanitized}`;
+
+
+
+ const generateCardUrl = (companyName) => {
+  if (!companyName) return ''; // or a fallback value like 'default-url'
+
+  const sanitized = companyName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+  return `${sanitized}`;
+};
+
+useEffect(() => {
+  const fetchCardForEdit = async () => {
+    if (!url_slug) return; // Not in edit mode
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${API_BASE_URL}/card/${url_slug}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const card = response.data.card;
+
+      setFormData({
+        companyName: card.company_name || '',
+        logo: card.logo || '',
+        selectedTheme: card.theme_id || '',
+        firstName: card.name?.split(' ')[0] || '',
+        lastName: card.name?.split(' ')[1] || '',
+        position: card.position || '',
+        phone: card.phone_number || '',
+        whatsapp: card.alternate_phone_number || '',
+        email: card.email || '',
+        website: card.website || '',
+        about: card.about_us || '',
+        facebook: card.facebook_link || '',
+        twitter: card.twitter_link || '',
+        instagram: card.instagram_link || '',
+        linkedin: card.linkedin_link || '',
+        youtube: card.youtube_link || '',
+        pinterest: card.pinterest_link || '',
+        paytm: card.paytm_number || '',
+        googlepay: card.gpay || '',
+        phonepe: card.phonepay || '',
+        bankName: card.bank_name || '',
+        accountHolder: card.account_holder_name || '',
+        accountNumber: card.account_number || '',
+        ifsc: card.ifsc || '',
+        established_date: card.established_date || '',
+        address: card.address || '',
+        location: card.location || '',
+        gst: card.gst || '',
+        googleMap: card.google_map || '',
+        videos: [
+          card.link1 || '',
+          card.link2 || '',
+          card.link3 || '',
+          card.link4 || '',
+          card.link5 || '',
+        ],
+        products: [
+          {
+            image: card.product1_img || null,
+            name: card.product1_name || '',
+          },
+          {
+            image: card.product2_img || null,
+            name: card.product2_name || '',
+          },
+          {
+            image: card.product3_img || null,
+            name: card.product3_name || '',
+          },
+          {
+            image: card.product4_img || null,
+            name: card.product4_name || '',
+          },
+          {
+            image: card.product5_img || null,
+            name: card.product5_name || '',
+          },
+           {
+            image: card.product6_img || null,
+            name: card.product6_name || '',
+          }, {
+            image: card.product7_img || null,
+            name: card.product7_name || '',
+          }, {
+            image: card.product8_img || null,
+            name: card.product8_name || '',
+          }, {
+            image: card.product9_img || null,
+            name: card.product9_name || '',
+          }, {
+            image: card.product10_img || null,
+            name: card.product10_name || '',
+          },
+        ],
+      });
+
+    } catch (err) {
+      console.error("Error fetching card for edit:", err);
+    }
   };
+
+  fetchCardForEdit();
+}, [url_slug]);
+
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
-  const validateStep = () => {
+
+  const checkCompanyNameExists = async (name) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/check-company-name/${name}`);
+    return response.data.exists; // true or false
+  } catch (err) {
+    console.error('Company name check error:', err);
+    return false;
+  }
+};
+
+const validateStep = () => {
   const newErrors = {};
+  const phoneRegex = /^[6-9]\d{9}$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const urlRegex = /^(https?:\/\/)?([\w\-]+\.)+[a-z]{2,}(\/[^\s]*)?$/i;
 
   if (currentStep === 1 && !formData.companyName.trim()) {
     newErrors.companyName = 'Company name is required';
   }
 
+  if (currentStep === 2 && !formData.selectedTheme) {
+    newErrors.selectedTheme = 'Please select a template';
+  }
+
   if (currentStep === 3) {
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.position.trim()) newErrors.position = 'Position is required';
-    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!phoneRegex.test(formData.phone)) {
+      newErrors.phone = 'Enter a valid 10-digit phone number';
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Enter a valid email address';
+    }
+
+    if (formData.website && !urlRegex.test(formData.website)) {
+      newErrors.website = 'Enter a valid website URL';
+    }
+
     if (!formData.about.trim()) newErrors.about = 'About is required';
-    if (!formData.established_date) newErrors.established_date = 'Date is required';
+    if (!formData.established_date) newErrors.established_date = 'Established Date is required';
+    if (!formData.address.trim()) newErrors.address = 'Address is required';
+  }
+
+  if (currentStep === 4) {
+    if (formData.facebook && !urlRegex.test(formData.facebook)) newErrors.facebook = 'Invalid Facebook URL';
+    if (formData.instagram && !urlRegex.test(formData.instagram)) newErrors.instagram = 'Invalid Instagram URL';
+    if (formData.youtube && !urlRegex.test(formData.youtube)) newErrors.youtube = 'Invalid YouTube URL';
+    if (formData.googleMap && !urlRegex.test(formData.googleMap)) newErrors.googleMap = 'Invalid Google Map URL';
+  }
+
+  if (currentStep === 5) {
+    formData.videos.forEach((link, idx) => {
+      if (link && !urlRegex.test(link)) {
+        newErrors[`video${idx}`] = `Invalid URL at Video ${idx + 1}`;
+      }
+    });
   }
 
   if (currentStep === 6) {
     if (!formData.bankName.trim()) newErrors.bankName = 'Bank name is required';
-    if (!formData.accountHolder.trim()) newErrors.accountHolder = 'Account holder is required';
-    if (!formData.accountNumber.trim()) newErrors.accountNumber = 'Account number is required';
-    if (!formData.ifsc.trim()) newErrors.ifsc = 'IFSC is required';
+    if (!formData.accountHolder.trim()) newErrors.accountHolder = 'Account holder name is required';
+    if (!formData.accountNumber.trim() || isNaN(formData.accountNumber)) {
+      newErrors.accountNumber = 'Account number must be numeric';
+    }
+    if (!formData.ifsc.trim()) newErrors.ifsc = 'IFSC code is required';
+
+    ['paytm', 'googlepay', 'phonepe'].forEach((key) => {
+      const value = formData[key];
+      if (value && !/^\d{10}$/.test(value)) {
+        newErrors[key] = `${key} number must be 10 digits`;
+      }
+    });
   }
 
   setErrors(newErrors);
   return Object.keys(newErrors).length === 0;
 };
-const handleSubmit = async () => {
+
+const handleSubmit = async (paymentId) => {
   if (!validateStep()) return;
 
-  const url = generateCardUrl(formData.companyName);
   const token = localStorage.getItem("token");
-
   if (!token) {
     toast({ title: "Error", description: "User not logged in." });
     return;
   }
 
+  const isEdit = !!url_slug; // If url_slug exists, you're editing
+  const url = isEdit ? url_slug : generateCardUrl(formData.companyName);
+
   const data = new FormData();
   data.append('companyName', formData.companyName);
-    data.append('logo', formData.logo);
-  data.append('selectedTheme', formData.selectedTheme);
+  data.append('logo', formData.logo);
+  data.append('selectedTheme', formData.selectedTheme); // Disable in form UI if isEdit
   data.append('firstName', formData.firstName);
   data.append('lastName', formData.lastName);
   data.append('position', formData.position);
   data.append('phone', formData.phone);
   data.append('whatsapp', formData.whatsapp);
-
   data.append('email', formData.email);
   data.append('website', formData.website);
   data.append('about', formData.about);
@@ -156,12 +329,12 @@ const handleSubmit = async () => {
   data.append('gst', formData.gst);
   data.append('google_map', formData.googleMap);
   data.append('url_slug', url);
+  data.append('razorpay_payment_id', paymentId);
+
   formData.videos.forEach((link, index) => {
-  data.append(`video${index + 1}`, link);
-});
+    data.append(`video${index + 1}`, link);
+  });
 
-
-  // ✅ Append product images and names
   formData.products.forEach((product, index) => {
     if (product.image) {
       data.append(`product${index + 1}_img`, product.image);
@@ -172,7 +345,10 @@ const handleSubmit = async () => {
   });
 
   try {
-    const response = await axios.post(`${API_BASE_URL}/create-card`, data, {
+    const response = await axios({
+      method: isEdit ? 'put' : 'post',
+      url: `${API_BASE_URL}/${isEdit ? `update-card/${url_slug}` : 'create-card'}`,
+      data,
       headers: {
         'Content-Type': 'multipart/form-data',
         Authorization: `Bearer ${token}`,
@@ -183,7 +359,7 @@ const handleSubmit = async () => {
       setCardCreated(true);
       setCardUrl(url);
       toast({
-        title: 'Card Created Successfully!',
+        title: isEdit ? 'Card Updated Successfully!' : 'Card Created Successfully!',
         description: `Your card is live at ${url}`,
       });
     } else {
@@ -201,26 +377,82 @@ const handleSubmit = async () => {
   }
 };
 
+const handlePayment = () => {
+  const amountInPaise = formData.templatePrice * 100;
+
+  const options = {
+    key: process.env.REACT_APP_RAZORPAY_ID, // ✅ Replace with your actual Razorpay test Key ID
+    amount: amountInPaise,
+    currency: 'INR',
+    name: formData.companyName || 'Digital Card',
+    description: `${formData.templateType} Template - ₹${formData.templatePrice}`,
+    handler: function (response) {
+      console.log("✅ Razorpay Payment ID:", response.razorpay_payment_id);
+    handleSubmit(response.razorpay_payment_id);
+// Call your existing function to save data to DB
+    },
+    prefill: {
+      name: `${formData.firstName} ${formData.lastName}`,
+      email: formData.email,
+      contact: formData.phone
+    },
+    theme: {
+      color: "#1976d2"
+    }
+  };
+
+  const rzp = new window.Razorpay(options);
+  rzp.open();
+};
+
+const templateOptions = [
+  {
+    id: 1,
+    name: "Classic Blue",
+    type: "Basic",
+    price: 2000,
+    borderColor: "blue",
+    image:Template1
+  },
+  {
+    id: 2,
+    name: "Green Boxed",
+    type: "Premium",
+    price: 5000,
+    borderColor: "green",
+        image:Template2
+
+  },
+  {
+    id: 3,
+    name: "Premium Style",
+    type: "Basic",
+    price: 2000,
+    borderColor: "purple",
+    image:Template3
+  }
+];
 
 
 
 
   const renderStep = () => {
     switch (currentStep) {
-      case 1:
+     case 1:
         return (
-         <Grid container spacing={2}>
-  <Grid item xs={12}>
-    <TextField
-      fullWidth
-      label="Company Name"
-      value={formData.companyName}
-      onChange={(e) => handleChange('companyName', e.target.value)}
-      helperText={`URL will be: ${generateCardUrl(formData.companyName)}`}
-    />
-  </Grid>
-
-  <Grid item xs={12}>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Company Name"
+                value={formData.companyName}
+                onChange={(e) => handleChange('companyName', e.target.value)}
+                error={!!errors.companyName}
+                helperText={errors.companyName || `URL will be: ${generateCardUrl(formData.companyName)}`}
+                 disabled={isEdit} 
+              />
+            </Grid>
+             <Grid item xs={12}>
     <Typography variant="subtitle2">Upload Company Logo (optional)</Typography>
     <input
       type="file"
@@ -228,46 +460,184 @@ const handleSubmit = async () => {
       onChange={(e) => handleChange('logo', e.target.files[0])}
     />
   </Grid>
-</Grid>
-
+            <Grid item xs={12}>
+              <TextField
+                label="Address"
+                fullWidth
+                required
+                value={formData.address}
+                onChange={(e) => handleChange('address', e.target.value)}
+                error={!!errors.address}
+                helperText={errors.address}
+              />
+            </Grid>
+          </Grid>
         );
      // Inside renderStep() case 2
-case 2:
+  case 2:
+        return (
+          <Grid container spacing={2}>
+            {templateOptions.map((template) => (
+              <Grid item xs={12} sm={6} md={4} key={template.id}>
+                <Card
+                  sx={{
+                    p: 2,
+                    cursor: 'pointer',
+                    border: formData.selectedTheme === template.id ? `2px solid ${template.borderColor}` : '1px solid gray',
+                    boxShadow: formData.selectedTheme === template.id ? 4 : 1,
+                    '&:hover': {
+                      border: `2px solid ${template.borderColor}`
+                    }
+                  }}
+                  onClick={() => {
+                    handleChange('selectedTheme', template.id);
+                    handleChange('templatePrice', template.price);
+                    handleChange('templateType', template.type);
+                  }}
+                >
+                  <Box
+                    sx={{
+                      height: 150,
+                      overflow: 'hidden',
+                      borderRadius: 2,
+                      mb: 1
+                    }}
+                  >
+                    <img
+                      src={template.image}
+                      alt={`${template.name} Preview`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: 8
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="h6">{template.name}</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {template.type} Template - ₹{template.price}
+                     disabled={isEdit} 
+                  </Typography>
+                </Card>
+              </Grid>
+            ))}
+            {errors.selectedTheme && (
+              <Grid item xs={12}>
+                <Typography color="error" align="center">{errors.selectedTheme}</Typography>
+              </Grid>
+            )}
+          </Grid>
+        );
+
+      case 3:
   return (
     <Grid container spacing={2}>
-      <Grid item xs={6}>
-        <Card
-          sx={{ p: 2, cursor: 'pointer', border: formData.selectedTheme === 1 ? '2px solid blue' : '1px solid gray' }}
-          onClick={() => handleChange('selectedTheme', 1)}
-        >
-          <Typography variant="h6">Classic Blue (Template 1)</Typography>
-        </Card>
+      <Grid item xs={12}>
+        <TextField
+          label="First Name"
+          fullWidth
+          required
+          value={formData.firstName}
+          onChange={(e) => handleChange('firstName', e.target.value)}
+          error={!!errors.firstName}
+          helperText={errors.firstName}
+        />
       </Grid>
-      <Grid item xs={6}>
-        <Card
-          sx={{ p: 2, cursor: 'pointer', border: formData.selectedTheme === 2 ? '2px solid green' : '1px solid gray' }}
-          onClick={() => handleChange('selectedTheme', 2)}
-        >
-          <Typography variant="h6">Green Boxed (Template 2)</Typography>
-        </Card>
+
+      <Grid item xs={12}>
+        <TextField
+          label="Last Name (Optional)"
+          fullWidth
+          value={formData.lastName}
+          onChange={(e) => handleChange('lastName', e.target.value)}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="Position"
+          fullWidth
+          required
+          value={formData.position}
+          onChange={(e) => handleChange('position', e.target.value)}
+          error={!!errors.position}
+          helperText={errors.position}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="Phone"
+          fullWidth
+          required
+          value={formData.phone}
+          onChange={(e) => handleChange('phone', e.target.value)}
+          error={!!errors.phone}
+          helperText={errors.phone}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="WhatsApp (Optional)"
+          fullWidth
+          value={formData.whatsapp}
+          onChange={(e) => handleChange('whatsapp', e.target.value)}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="Email"
+          fullWidth
+          required
+          value={formData.email}
+          onChange={(e) => handleChange('email', e.target.value)}
+          error={!!errors.email}
+          helperText={errors.email}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="Website (Optional)"
+          fullWidth
+          value={formData.website}
+          onChange={(e) => handleChange('website', e.target.value)}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="About Us"
+          fullWidth
+          required
+          multiline
+          minRows={3}
+          value={formData.about}
+          onChange={(e) => handleChange('about', e.target.value)}
+          error={!!errors.about}
+          helperText={errors.about}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="Established Date"
+          type="date"
+          InputLabelProps={{ shrink: true }}
+          fullWidth
+          required
+          value={formData.established_date}
+          onChange={(e) => handleChange('established_date', e.target.value)}
+          error={!!errors.established_date}
+          helperText={errors.established_date}
+        />
       </Grid>
     </Grid>
   );
 
-      case 3:
-        return (
-          <Grid container spacing={2}>
-            <Grid item xs={12}><TextField label="First Name" fullWidth required value={formData.firstName} onChange={(e) => handleChange('firstName', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Last Name (Optional)" fullWidth value={formData.lastName} onChange={(e) => handleChange('lastName', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Position" fullWidth required value={formData.position} onChange={(e) => handleChange('position', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Phone" fullWidth required value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="WhatsApp (Optional)" fullWidth value={formData.whatsapp} onChange={(e) => handleChange('whatsapp', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Email" fullWidth required value={formData.email} onChange={(e) => handleChange('email', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Website (Optional)" fullWidth value={formData.website} onChange={(e) => handleChange('website', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="About Us" fullWidth required multiline minRows={3} value={formData.about} onChange={(e) => handleChange('about', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Established Date" type="date" InputLabelProps={{ shrink: true }} fullWidth required value={formData.established_date} onChange={(e) => handleChange('established_date', e.target.value)} /></Grid>
-          </Grid>
-        );
       case 4:
         return (
           <Grid container spacing={2}>
@@ -298,16 +668,68 @@ case 2:
     </Grid>
   );
 
-      case 6:
-        return (
-          <Grid container spacing={2}>
-            <Grid item xs={12}><TextField label="Bank Name" fullWidth required value={formData.bankName} onChange={(e) => handleChange('bankName', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Account Holder" fullWidth required value={formData.accountHolder} onChange={(e) => handleChange('accountHolder', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Account Number" fullWidth required value={formData.accountNumber} onChange={(e) => handleChange('accountNumber', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="IFSC" fullWidth required value={formData.ifsc} onChange={(e) => handleChange('ifsc', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="GPay (Optional)" fullWidth value={formData.googlepay} onChange={(e) => handleChange('googlepay', e.target.value)} /></Grid>
-          </Grid>
-        );
+  case 6:
+  return (
+    <Grid container spacing={2}>
+      <Grid item xs={12}>
+        <TextField
+          label="Bank Name"
+          fullWidth
+          required
+          value={formData.bankName}
+          onChange={(e) => handleChange('bankName', e.target.value)}
+          error={!!errors.bankName}
+          helperText={errors.bankName}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="Account Holder"
+          fullWidth
+          required
+          value={formData.accountHolder}
+          onChange={(e) => handleChange('accountHolder', e.target.value)}
+          error={!!errors.accountHolder}
+          helperText={errors.accountHolder}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="Account Number"
+          fullWidth
+          required
+          value={formData.accountNumber}
+          onChange={(e) => handleChange('accountNumber', e.target.value)}
+          error={!!errors.accountNumber}
+          helperText={errors.accountNumber}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="IFSC"
+          fullWidth
+          required
+          value={formData.ifsc}
+          onChange={(e) => handleChange('ifsc', e.target.value)}
+          error={!!errors.ifsc}
+          helperText={errors.ifsc}
+        />
+      </Grid>
+
+      <Grid item xs={12}>
+        <TextField
+          label="GPay (Optional)"
+          fullWidth
+          value={formData.googlepay}
+          onChange={(e) => handleChange('googlepay', e.target.value)}
+        />
+      </Grid>
+    </Grid>
+  );
+
       case 7:
         return (
           <>
@@ -379,55 +801,71 @@ case 2:
             </Grid>
           </>
         );
-      case 8:
+     case 8:
         return (
-          <Box textAlign="center">
-            <Typography variant="h6">Preview</Typography>
-            <Box mt={2} p={2} borderRadius={2} bgcolor="#e3f2fd">
-              <Typography variant="h5">{formData.companyName || 'Company Name'}</Typography>
-              <Typography>{formData.firstName} {formData.lastName}</Typography>
-              <Typography>{formData.position}</Typography>
-              <Typography>{formData.phone}</Typography>
-              <Typography>{formData.email}</Typography>
-            </Box>
+          <Box>
+            <Typography variant="h6" gutterBottom>Card Summary Preview</Typography>
+            <Card variant="outlined" sx={{ p: 3, backgroundColor: '#e3f2fd', borderRadius: 3 }}>
+              <Typography variant="h5" gutterBottom>{formData.companyName || 'Company Name'}</Typography>
+              <Typography><strong>Name:</strong> {formData.firstName} {formData.lastName}</Typography>
+              <Typography><strong>Position:</strong> {formData.position}</Typography>
+              <Typography><strong>Phone:</strong> {formData.phone}</Typography>
+              <Typography><strong>Email:</strong> {formData.email}</Typography>
+              <Typography><strong>Template:</strong> {formData.templateType} – ₹{formData.templatePrice}</Typography>
+              <Typography><strong>Bank Name:</strong> {formData.bankName}</Typography>
+              <Typography><strong>Account No:</strong> {formData.accountNumber}</Typography>
+              <Typography><strong>IFSC:</strong> {formData.ifsc}</Typography>
+              <Typography><strong>Established:</strong> {formData.established_date}</Typography>
+              <Typography><strong>Address:</strong> {formData.address}</Typography>
+              <Typography sx={{ mt: 2 }}><strong>About:</strong> {formData.about}</Typography>
+            </Card>
           </Box>
         );
+
       default:
         return null;
     }
   };
-
-  if (cardCreated) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <Card sx={{ maxWidth: 500, textAlign: 'center' }}>
-          <CardHeader title="🎉 Card Created Successfully!" />
-          <CardContent>
-            <Typography gutterBottom>Card URL:</Typography>
-            <Typography variant="body2" color="primary" sx={{ wordBreak: 'break-word' }}>{cardUrl}</Typography>
-            <Box mt={2} display="flex" justifyContent="space-between">
-              <Button startIcon={<Copy />} onClick={() => navigator.clipboard.writeText(`https://${cardUrl}`)}>
-                Copy URL
-              </Button>
-              <Button startIcon={<ExternalLink />} onClick={() => window.open(`/card/${generateCardUrl(formData.companyName)}`, '_blank')}>
-                View Card
-              </Button>
-            </Box>
-            <Button fullWidth sx={{ mt: 2 }} onClick={onClose}>Back to Dashboard</Button>
-          </CardContent>
-        </Card>
-      </Box>
-    );
-  }
+if (cardCreated) {
+  const fullCardUrl = `${window.location.origin}/card/${cardUrl}`;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f0f0f0', py: 4 }}>
-      <Box sx={{ maxWidth: '960px', mx: 'auto' }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-          <Button variant="outlined" startIcon={<ArrowLeft />} onClick={onClose}>Back</Button>
-          {currentStep < steps.length && <Button variant="contained">Skip →</Button>}
-        </Box>
+    <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+      <Card sx={{ maxWidth: 500, textAlign: 'center', p: 2 }}>
+        <CardHeader title="🎉 Card Created Successfully!" />
+        <CardContent>
+          <Typography gutterBottom>Card URL:</Typography>
+          <Typography variant="body2" color="primary" sx={{ wordBreak: 'break-word' }}>
+            {fullCardUrl}
+          </Typography>
 
+          <Box mt={2} display="flex" justifyContent="space-between">
+            <Button
+              startIcon={<Copy />}
+              onClick={() => navigator.clipboard.writeText(fullCardUrl)}
+            >
+              Copy URL
+            </Button>
+            <Button
+              startIcon={<ExternalLink />}
+              onClick={() => window.open(`/card/${cardUrl}`, '_blank')}
+            >
+              View Card
+            </Button>
+          </Box>
+
+          <Button fullWidth sx={{ mt: 2 }} onClick={navigate('/dashboard')}>
+            Back to Dashboard
+          </Button>
+        </CardContent>
+      </Card>
+    </Box>
+  );
+}
+
+  return (
+    <Box sx={{ minHeight: '100vh',  background: 'linear-gradient(to right, #e0f7fa, #f1f8e9)',py:4 }}>
+      <Box sx={{ maxWidth: '960px', mx: 'auto' }}>
         <Box display="flex" justifyContent="center" mb={3}>
           {steps.map((step, idx) => (
             <Box
@@ -436,9 +874,10 @@ case 2:
                 px: 2,
                 py: 1,
                 borderRadius: 2,
-                bgcolor: idx + 1 === currentStep ? 'primary.main' : idx + 1 < currentStep ? 'grey.400' : 'grey.200',
-                color: idx + 1 <= currentStep ? 'white' : 'text.primary',
-                mx: 0.5
+                bgcolor: idx + 1 === currentStep ? 'primary.main' : idx + 1 < currentStep ? 'success.light' : 'grey.200',
+                color: idx + 1 === currentStep ? 'white' : 'text.primary',
+                mx: 0.5,
+                transition: '0.3s'
               }}
             >
               <Typography variant="body2">{step}</Typography>
@@ -457,14 +896,14 @@ case 2:
                 </Button>
               )}
               {currentStep < steps.length ? (
-             <Button variant="contained" endIcon={<ArrowRight />} onClick={() => {
-  if (validateStep()) setCurrentStep(currentStep + 1);
-}}>
-  Submit & Next
-</Button>
+                <Button variant="contained" endIcon={<ArrowRight />} onClick={() => {
+                  if (validateStep()) setCurrentStep(currentStep + 1);
+                }}>
+                  Submit & Next
+                </Button>
               ) : (
-                <Button variant="contained" color="success" endIcon={<Check />} onClick={handleSubmit}>
-                  Create Card
+                <Button variant="contained" color="success" endIcon={<Check />} onClick={handlePayment}>
+                  Pay & Create Card
                 </Button>
               )}
             </Box>
@@ -474,5 +913,4 @@ case 2:
     </Box>
   );
 };
-
 export default CardCreationWizard;

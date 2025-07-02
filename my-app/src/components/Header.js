@@ -151,7 +151,13 @@ const Header = () => {
                   </Avatar>
                 </IconButton>
                 <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
-                  <MenuItem onClick={() => { navigate('/dashboard'); closeMenu(); }}>My Profile</MenuItem>
+                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
+  <MenuItem disabled>
+    {user.email || 'No Email'}
+  </MenuItem>
+  <MenuItem onClick={handleLogout}>Logout</MenuItem>
+</Menu>
+
                   <MenuItem onClick={handleLogout}>Logout</MenuItem>
                 </Menu>
               </>

@@ -15,11 +15,14 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { WhatsApp, Facebook, Sms as SmsIcon } from '@mui/icons-material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+
 
 const API_BASE_URL = "http://localhost:5000/api/auth";
 
@@ -66,8 +69,12 @@ const Dashboard = () => {
         },
       });
 
-      setCards(cards.filter(card => card.url_slug !== url_slug));
       setDialogOpen(false);
+      setSelectedCard(null);
+
+      setTimeout(() => {
+        fetchUserCards();
+      }, 300);
     } catch (err) {
       console.error("Failed to delete card", err);
     }
@@ -117,6 +124,7 @@ const Dashboard = () => {
                 <TableCell><strong>Company</strong></TableCell>
                 <TableCell><strong>URL</strong></TableCell>
                 <TableCell align="center"><strong>View Details</strong></TableCell>
+                <TableCell align="center"><strong>Share</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -124,9 +132,7 @@ const Dashboard = () => {
                 <TableRow
                   key={card.card_id}
                   hover
-                  sx={{
-                    backgroundColor: index % 2 === 0 ? "#fafafa" : "#fff"
-                  }}
+                  sx={{ backgroundColor: index % 2 === 0 ? "#fafafa" : "#fff" }}
                 >
                   <TableCell>{card.company_name}</TableCell>
                   <TableCell>
@@ -150,6 +156,39 @@ const Dashboard = () => {
                       <VisibilityIcon />
                     </IconButton>
                   </TableCell>
+        <TableCell align="center" sx={{ verticalAlign: 'middle' }}>
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+    <IconButton
+      onClick={() => {
+        const url = `${window.location.origin}/card/${card.url_slug}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(url)}`, '_blank');
+      }}
+      color="success"
+    >
+      <WhatsApp />
+    </IconButton>
+    <IconButton
+      onClick={() => {
+        const url = `${window.location.origin}/card/${card.url_slug}`;
+        navigator.clipboard.writeText(url);
+        alert("Copied to clipboard!");
+      }}
+      color="primary"
+    >
+      <ContentCopyIcon/>
+    </IconButton>
+    <IconButton
+      onClick={() => {
+        const url = `${window.location.origin}/card/${card.url_slug}`;
+        window.open(`sms:?body=${encodeURIComponent(url)}`, '_blank');
+      }}
+      color="secondary"
+    >
+      <SmsIcon />
+    </IconButton>
+  </Box>
+</TableCell>
+
                 </TableRow>
               ))}
             </TableBody>
@@ -162,17 +201,25 @@ const Dashboard = () => {
         <DialogTitle>Card Details</DialogTitle>
         <DialogContent dividers>
           {selectedCard && (
-            <>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Typography><strong>Company:</strong> {selectedCard.company_name}</Typography>
-              <Typography><strong>First Name:</strong> {selectedCard.first_name}</Typography>
-              <Typography><strong>Last Name:</strong> {selectedCard.last_name}</Typography>
+              <Typography><strong>Name:</strong> {selectedCard.name}</Typography>
               <Typography><strong>Position:</strong> {selectedCard.position}</Typography>
               <Typography><strong>Email:</strong> {selectedCard.email}</Typography>
-              <Typography><strong>Phone:</strong> {selectedCard.phone}</Typography>
+              <Typography><strong>Phone:</strong> {selectedCard.phone_number}</Typography>
+              <Typography><strong>WhatsApp:</strong> {selectedCard.alternate_phone_number}</Typography>
               <Typography><strong>Website:</strong> {selectedCard.website}</Typography>
-              <Typography><strong>About:</strong> {selectedCard.about}</Typography>
-              {/* Add more fields as required */}
-            </>
+              <Typography><strong>About:</strong> {selectedCard.about_us}</Typography>
+              <Typography><strong>Facebook:</strong> {selectedCard.facebook}</Typography>
+              <Typography><strong>Twitter:</strong> {selectedCard.twitter}</Typography>
+              <Typography><strong>Instagram:</strong> {selectedCard.instagram}</Typography>
+              <Typography><strong>LinkedIn:</strong> {selectedCard.linkedin}</Typography>
+              <Typography><strong>Selected Theme:</strong> Template {selectedCard.selected_theme}</Typography>
+              <Typography><strong>Bank Name:</strong> {selectedCard.bank_name}</Typography>
+              <Typography><strong>Account Number:</strong> {selectedCard.account_number}</Typography>
+              <Typography><strong>IFSC Code:</strong> {selectedCard.ifsc}</Typography>
+              <Typography><strong>GPAY:</strong> {selectedCard.gpay}</Typography>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>

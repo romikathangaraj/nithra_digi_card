@@ -7,6 +7,7 @@ import { Typography, Box } from '@mui/material';
 // ⬇️ Import your templates
 import Template1 from './components/Template1';
 import Template2 from './components/Template2';
+import Template3 from './components/Template3';
 
 const CardView = () => {
   const { slug } = useParams();
@@ -27,6 +28,8 @@ const CardView = () => {
         return <Template1 card={card} />;
       case 2:
         return <Template2 card={card} />;
+        case 3:
+        return <Template3 card={card} />;
       default:
         return <Typography>Invalid Theme</Typography>;
     }
