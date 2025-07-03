@@ -146,20 +146,19 @@ const Header = () => {
             {isLoggedIn && user ? (
               <>
                 <IconButton onClick={openMenu}>
-                  <Avatar src={user.image || ''}>
-                    {user.firstName?.[0] || 'U'}
-                  </Avatar>
-                </IconButton>
-                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
-                <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
+  <Avatar src={user.profile_pic || ''}>
+    {(user.name && user.name[0].toUpperCase()) || 'U'}
+  </Avatar>
+</IconButton>
+
+<Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
   <MenuItem disabled>
     {user.email || 'No Email'}
   </MenuItem>
   <MenuItem onClick={handleLogout}>Logout</MenuItem>
 </Menu>
 
-                  <MenuItem onClick={handleLogout}>Logout</MenuItem>
-                </Menu>
+               
               </>
             ) : (
               <Button variant="outlined" component={Link} to="/login" startIcon={<LoginIcon />}>

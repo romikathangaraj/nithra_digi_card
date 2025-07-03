@@ -102,35 +102,29 @@ setTimeout(() => {
     }
   };
 
-  const handleGoogleSignIn = async (credentialResponse) => {
-    try {
-      const { data } = await axios.post(`${API_BASE_URL}/google-signin`, {
-        token: credentialResponse.credential,
-      });
+ const handleGoogleSignIn = async (credentialResponse) => {
+  try {
+    const { data } = await axios.post(`${API_BASE_URL}/google-signin`, {
+      token: credentialResponse.credential,
+    });
 
-      const decoded = jwtDecode(credentialResponse.credential);
+    // Save token and full user object as-is
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("user", JSON.stringify(data.user));
 
-      const userData = {
-        id: data.user.id,
-        firstName: decoded.name,
-        image: decoded.picture || "",
-      };
+    window.dispatchEvent(new Event("storage"));
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("user", JSON.stringify(userData));
+    showSnackbar("Google Sign-In Successful!", "success");
 
-      window.dispatchEvent(new Event("storage"));
-
-showSnackbar("Google Sign-In Successful!", "success");
-setTimeout(() => {
-  navigate(data.user.role === "admin" ? "/admin-dashboard" : "/dashboard");
-}, 1500);
-
-    } catch (error) {
-      showSnackbar("Google Sign-In failed!", "error");
-    }
-  };
+    setTimeout(() => {
+      navigate(data.user.role === "admin" ? "/admin-dashboard" : "/dashboard");
+    }, 1500);
+  } catch (error) {
+    console.error("Google Sign-In Error:", error);
+    showSnackbar("Google Sign-In failed!", "error");
+  }
+};
 
   return (
     <Container component="main" maxWidth="xs">
