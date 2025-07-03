@@ -1,25 +1,29 @@
 const db = require("../db");
 
-exports.findUserByEmail = (email, cb) => {
-  db.query("SELECT * FROM users WHERE email = ?", [email], cb);
+exports.findUserByEmail = async (email) => {
+  const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+  return rows;
 };
 
-exports.findGoogleUser = (email, cb) => {
-  db.query("SELECT * FROM users WHERE email = ? AND auth_provider = 'google'", [email], cb);
+exports.findGoogleUser = async (email) => {
+  const [rows] = await db.query("SELECT * FROM users WHERE email = ? AND auth_provider = 'google'", [email]);
+  return rows;
 };
 
-exports.createLocalUser = (user, cb) => {
-  const sql = `
+exports.createLocalUser = async (user) => {
+  const [result] = await db.query(`
     INSERT INTO users (name, email, phone_number, password_hash, profile_pic, auth_provider)
-    VALUES (?, ?, ?, ?, ?, 'local')
-  `;
-  db.query(sql, [user.name, user.email, user.phone_number, user.password_hash, user.profile_pic], cb);
+    VALUES (?, ?, ?, ?, ?, 'local')`, 
+    [user.name, user.email, user.phone_number, user.password_hash, user.profile_pic]
+  );
+  return result;
 };
 
-exports.createGoogleUser = (user, cb) => {
-  const sql = `
+exports.createGoogleUser = async (user) => {
+  const [result] = await db.query(`
     INSERT INTO users (name, email, google_id, profile_pic, auth_provider)
-    VALUES (?, ?, ?, ?, 'google')
-  `;
-  db.query(sql, [user.name, user.email, user.google_id, user.profile_pic], cb);
+    VALUES (?, ?, ?, ?, 'google')`, 
+    [user.name, user.email, user.google_id, user.profile_pic]
+  );
+  return result;
 };

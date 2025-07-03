@@ -38,6 +38,7 @@ const isEdit = !!url_slug;
   const [currentStep, setCurrentStep] = useState(1);
   const [cardCreated, setCardCreated] = useState(false);
   const [cardUrl, setCardUrl] = useState('');
+  const [checkingName, setCheckingName] = useState(false);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     companyName: '',
@@ -74,6 +75,16 @@ const isEdit = !!url_slug;
     videos: Array(5).fill('')
   });
   const { toast } = useToast();
+useEffect(() => {
+  if (cardCreated && cardUrl) {
+    // Wait for a second and then redirect to the card page
+    const timeout = setTimeout(() => {
+      navigate(`/card/${cardUrl}`);
+    }, 2000); // or reduce/increase timing as needed
+
+    return () => clearTimeout(timeout);
+  }
+}, [cardCreated, cardUrl]);
 
   const steps = [
     'Company Name',
@@ -211,6 +222,30 @@ useEffect(() => {
     return false;
   }
 };
+useEffect(() => {
+  if (isEdit) return; // ✅ Skip name check in edit mode
+
+  const checkName = async () => {
+    const trimmedName = formData.companyName.trim();
+    setCheckingName(true);
+    const exists = await checkCompanyNameExists(trimmedName);
+    setCheckingName(false);
+
+    if (exists) {
+      setErrors((prev) => ({ ...prev, companyName: 'This company name already exists' }));
+    } else {
+      setErrors((prev) => {
+        const updated = { ...prev };
+        delete updated.companyName;
+        return updated;
+      });
+    }
+  };
+
+  const timeout = setTimeout(checkName, 500);
+  return () => clearTimeout(timeout);
+}, [formData.companyName, isEdit]);
+
 
 const validateStep = () => {
   const newErrors = {};
@@ -219,9 +254,15 @@ const validateStep = () => {
   const urlRegex = /^(https?:\/\/)?([\w\-]+\.)+[a-z]{2,}(\/[^\s]*)?$/i;
 
   if (currentStep === 1 && !formData.companyName.trim()) {
-    newErrors.companyName = 'Company name is required';
-  }
+    newErrors.companyName = ' name is required';
+  }else if (errors.companyName === 'This company name already exists') {
+      // 👈 Prevent next step if company name exists
+      newErrors.companyName = 'This company name already exists';
+    }
 
+  if (currentStep === 1 && !formData.address.trim()) {
+    newErrors.address = 'address is required';
+  }
   if (currentStep === 2 && !formData.selectedTheme) {
     newErrors.selectedTheme = 'Please select a template';
   }
@@ -236,6 +277,10 @@ const validateStep = () => {
       newErrors.phone = 'Enter a valid 10-digit phone number';
     }
 
+    
+    if (!phoneRegex.test(formData.whatsapp)) {
+      newErrors.whatsapp = 'Enter a valid 10-digit phone number';
+    }
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!emailRegex.test(formData.email)) {
@@ -295,13 +340,13 @@ const handleSubmit = async (paymentId) => {
     return;
   }
 
-  const isEdit = !!url_slug; // If url_slug exists, you're editing
+  const isEdit = !!url_slug;
   const url = isEdit ? url_slug : generateCardUrl(formData.companyName);
 
   const data = new FormData();
   data.append('companyName', formData.companyName);
   data.append('logo', formData.logo);
-  data.append('selectedTheme', formData.selectedTheme); // Disable in form UI if isEdit
+  data.append('selectedTheme', formData.selectedTheme);
   data.append('firstName', formData.firstName);
   data.append('lastName', formData.lastName);
   data.append('position', formData.position);
@@ -355,13 +400,18 @@ const handleSubmit = async (paymentId) => {
       },
     });
 
-    if (response.data.success) {
-      setCardCreated(true);
-      setCardUrl(url);
+    console.log('response.data:', response.data);
+
+    if (response.data.success || response.status === 201) {
       toast({
         title: isEdit ? 'Card Updated Successfully!' : 'Card Created Successfully!',
-        description: `Your card is live at ${url}`,
+        description: 'Redirecting to dashboard...',
       });
+
+      // Wait briefly before navigating so toast can be seen
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1000);
     } else {
       toast({
         title: 'Error',
@@ -376,6 +426,8 @@ const handleSubmit = async (paymentId) => {
     });
   }
 };
+
+
 
 const handlePayment = () => {
   const amountInPaise = formData.templatePrice * 100;
@@ -442,15 +494,16 @@ const templateOptions = [
         return (
           <Grid container spacing={2}>
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Company Name"
-                value={formData.companyName}
-                onChange={(e) => handleChange('companyName', e.target.value)}
-                error={!!errors.companyName}
-                helperText={errors.companyName || `URL will be: ${generateCardUrl(formData.companyName)}`}
-                 disabled={isEdit} 
-              />
+            <TextField
+  fullWidth
+  label="Company Name"
+  value={formData.companyName}
+  onChange={(e) => handleChange('companyName', e.target.value)}
+  error={!!errors.companyName}
+  helperText={checkingName ? 'Checking...' : errors.companyName || `URL will be: ${generateCardUrl(formData.companyName)}`}
+  disabled={isEdit}
+/>
+
             </Grid>
              <Grid item xs={12}>
     <Typography variant="subtitle2">Upload Company Logo (optional)</Typography>
@@ -584,6 +637,8 @@ const templateOptions = [
           fullWidth
           value={formData.whatsapp}
           onChange={(e) => handleChange('whatsapp', e.target.value)}
+           error={!!errors.whatsapp}
+          helperText={errors.whatsapp}
         />
       </Grid>
 
@@ -641,10 +696,14 @@ const templateOptions = [
       case 4:
         return (
           <Grid container spacing={2}>
-            <Grid item xs={12}><TextField label="Facebook (Optional)" fullWidth value={formData.facebook} onChange={(e) => handleChange('facebook', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Instagram (Optional)" fullWidth value={formData.instagram} onChange={(e) => handleChange('instagram', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="YouTube (Optional)" fullWidth value={formData.youtube} onChange={(e) => handleChange('youtube', e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Google Map Link (Optional)" fullWidth value={formData.googleMap} onChange={(e) => handleChange('googleMap', e.target.value)} /></Grid>
+            <Grid item xs={12}><TextField label="Facebook (Optional)" fullWidth value={formData.facebook} onChange={(e) => handleChange('facebook', e.target.value)} error={!!errors.facebook}
+          helperText={errors.facebook} /></Grid>
+            <Grid item xs={12}><TextField label="Instagram (Optional)" fullWidth value={formData.instagram} onChange={(e) => handleChange('instagram', e.target.value)} error={!!errors.instagram}
+          helperText={errors.instagram} /></Grid>
+            <Grid item xs={12}><TextField label="YouTube (Optional)" fullWidth value={formData.youtube} onChange={(e) => handleChange('youtube', e.target.value)}  error={!!errors.youtube}
+          helperText={errors.youtube}/></Grid>
+            <Grid item xs={12}><TextField label="Google Map Link (Optional)" fullWidth value={formData.googleMap} onChange={(e) => handleChange('googleMap', e.target.value)}  error={!!errors.googleMap}
+          helperText={errors.googleMap}/></Grid>
           </Grid>
         );
 
@@ -662,6 +721,7 @@ const templateOptions = [
               updated[idx] = e.target.value;
               handleChange('videos', updated);
             }}
+            
           />
         </Grid>
       ))}
@@ -826,42 +886,6 @@ const templateOptions = [
         return null;
     }
   };
-if (cardCreated) {
-  const fullCardUrl = `${window.location.origin}/card/${cardUrl}`;
-
-  return (
-    <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-      <Card sx={{ maxWidth: 500, textAlign: 'center', p: 2 }}>
-        <CardHeader title="🎉 Card Created Successfully!" />
-        <CardContent>
-          <Typography gutterBottom>Card URL:</Typography>
-          <Typography variant="body2" color="primary" sx={{ wordBreak: 'break-word' }}>
-            {fullCardUrl}
-          </Typography>
-
-          <Box mt={2} display="flex" justifyContent="space-between">
-            <Button
-              startIcon={<Copy />}
-              onClick={() => navigator.clipboard.writeText(fullCardUrl)}
-            >
-              Copy URL
-            </Button>
-            <Button
-              startIcon={<ExternalLink />}
-              onClick={() => window.open(`/card/${cardUrl}`, '_blank')}
-            >
-              View Card
-            </Button>
-          </Box>
-
-          <Button fullWidth sx={{ mt: 2 }} onClick={navigate('/dashboard')}>
-            Back to Dashboard
-          </Button>
-        </CardContent>
-      </Card>
-    </Box>
-  );
-}
 
   return (
     <Box sx={{ minHeight: '100vh',  background: 'linear-gradient(to right, #e0f7fa, #f1f8e9)',py:4 }}>

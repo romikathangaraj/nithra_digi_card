@@ -3,8 +3,8 @@ POST http://localhost:5000/api/auth/register
 Content-Type: application/json
 
 {
-  "name": "Romika Thangaraj",
-  "email": "romika@example.com",
+  "name": "romi",
+  "email": "roma@example.com",
   "password": "securePassword123",
   "phone_number": "9876543210"
 }
@@ -55,3 +55,6 @@ Content-Type: application/json
     }
   ]
 }
+###
+
+GET http://localhost:5000/api/auth/check-company-name/nithra

@@ -24,9 +24,12 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // REGISTER
 router.post("/register", async (req, res) => {
-  const { email, password, name, phone_number } = req.body;
-  findUserByEmail(email, async (err, results) => {
-    if (results.length > 0) return res.status(400).json({ error: "User already exists" });
+  try {
+    const { email, password, name, phone_number } = req.body;
+    const results = await findUserByEmail(email);
+
+    if (results.length > 0)
+      return res.status(400).json({ error: "User already exists" });
 
     const password_hash = await bcrypt.hash(password, 10);
     const user = {
@@ -37,31 +40,44 @@ router.post("/register", async (req, res) => {
       profile_pic: "https://i.imgur.com/7k12EPD.png",
     };
 
-    createLocalUser(user, (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-      const token = jwt.sign({ id: result.insertId }, JWT_SECRET, { expiresIn: "7d" });
-      res.status(201).json({ message: "Registered", token, user: { ...user, id: result.insertId } });
-    });
-  });
+    const result = await createLocalUser(user);
+    const token = jwt.sign({ id: result.insertId }, JWT_SECRET, { expiresIn: "7d" });
+    res.status(201).json({ message: "Registered", token, user: { ...user, id: result.insertId } });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
-// LOGIN
-router.post("/login", (req, res) => {
-  const { email, password } = req.body;
 
-  findUserByEmail(email, async (err, results) => {
-    if (results.length === 0) return res.status(400).json({ error: "User not found" });
+// LOGIN
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const results = await findUserByEmail(email);
+
+    if (results.length === 0)
+      return res.status(400).json({ error: "User not found" });
 
     const user = results[0];
     const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+
+    if (!isMatch)
+      return res.status(400).json({ error: "Invalid credentials" });
 
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
     res.json({ message: "Login successful", token, user });
-  });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
+
 // GOOGLE SIGN-IN
+
 router.post("/google-signin", async (req, res) => {
   const { token } = req.body;
 
@@ -73,31 +89,35 @@ router.post("/google-signin", async (req, res) => {
 
     const { email, name, sub: google_id, picture } = ticket.getPayload();
 
-    findGoogleUser(email, (err, results) => {
-      if (results.length > 0) {
-        const user = results[0];
-        const jwtToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
-        return res.json({ message: "Google login successful", token: jwtToken, user });
-      } else {
-        const newUser = {
-          name,
-          email,
-          google_id,
-          profile_pic: picture,
-        };
-        createGoogleUser(newUser, (err, result) => {
-          if (err) return res.status(500).json({ error: err.message });
-          const jwtToken = jwt.sign({ id: result.insertId }, JWT_SECRET, { expiresIn: "7d" });
-          res.status(201).json({
-            message: "Google account registered",
-            token: jwtToken,
-            user: { ...newUser, id: result.insertId },
-          });
-        });
-      }
+    const [existingUsers] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
+
+    if (existingUsers.length > 0) {
+      const user = existingUsers[0];
+      const jwtToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
+      return res.json({ message: "Google login successful", token: jwtToken, user });
+    }
+
+    // If new user, insert into DB
+    const [result] = await db.query(
+      "INSERT INTO users (name, email, google_id, profile_pic) VALUES (?, ?, ?, ?)",
+      [name, email, google_id, picture]
+    );
+
+    const jwtToken = jwt.sign({ id: result.insertId }, JWT_SECRET, { expiresIn: "7d" });
+    return res.status(201).json({
+      message: "Google account registered",
+      token: jwtToken,
+      user: {
+        id: result.insertId,
+        name,
+        email,
+        google_id,
+        profile_pic: picture,
+      },
     });
   } catch (error) {
-    res.status(401).json({ error: "Invalid Google token" });
+    console.error("Google sign-in error:", error.message);
+    return res.status(401).json({ error: "Invalid Google token or server error" });
   }
 });
 
@@ -121,8 +141,14 @@ router.post('/create-card', authenticateToken, upload.any(), async (req, res) =>
     const files = req.files;
     const body = req.body;
 
-    // Check if company_name already exists for this user (or globally if needed)
-    const [existing] = await db.query('SELECT 1 FROM card WHERE company_name = ?', [body.companyName]);
+    if (!req.user?.id) {
+      return res.status(401).json({ success: false, error: 'Unauthorized. Invalid user token.' });
+    }
+
+    const [existing] = await db.query(
+      'SELECT 1 FROM card WHERE company_name = ?',
+      [body.companyName]
+    );
     if (existing.length > 0) {
       return res.status(400).json({ success: false, error: 'Company name already exists. Please choose a different name.' });
     }
@@ -208,55 +234,62 @@ router.post('/create-card', authenticateToken, upload.any(), async (req, res) =>
       ) VALUES (${Array(values.length).fill('?').join(',')})
     `;
 
-    db.query(sql, values, (err, result) => {
-      if (err) {
-        console.error('DB error:', err);
-        return res.status(500).json({ success: false, error: 'Database error' });
-      }
-      res.status(201).json({ success: true, card_id: result.insertId });
-    });
+    const [result] = await db.query(sql, values);
+    return res.status(201).json({ success: true, card_id: result.insertId });
 
   } catch (err) {
     console.error('Server error:', err.message);
-    res.status(500).json({ success: false, error: 'Server error' });
+    return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
 
-router.get("/user-cards", authenticateToken, (req, res) => {
-  const userId = req.user.id;
-  const sql = "SELECT * FROM card WHERE user_id = ?  AND is_delete = 0";
-  db.query(sql, [userId], (err, results) => {
-    if (err) return res.status(500).json({ error: "DB Error" });
+
+// Get all user cards
+router.get("/user-cards", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [results] = await db.query(
+      "SELECT * FROM card WHERE user_id = ? AND is_delete = 0",
+      [userId]
+    );
     res.json({ cards: results });
-  });
+  } catch (err) {
+    console.error("DB Error:", err);
+    res.status(500).json({ error: "DB Error" });
+  }
 });
 
-router.get("/card/:slug", (req, res) => {
-  const { slug } = req.params;
-  const sql = "SELECT * FROM card WHERE url_slug = ?  AND is_delete = 0";
-  
-  db.query(sql, [slug], (err, results) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-    if (results.length === 0) return res.status(404).json({ error: "Card not found" });
+// Get a specific card by slug
+router.get("/card/:slug", async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const [results] = await db.query(
+      "SELECT * FROM card WHERE url_slug = ? AND is_delete = 0",
+      [slug]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "Card not found" });
+    }
 
     const card = results[0];
 
-    // ✅ Construct products array
+    // Construct products array
     const products = [];
     for (let i = 0; i < 10; i++) {
       const imgField = `product${i + 1}_img`;
-      const nameField = `product${i + 1}_name`; // optional
+      const nameField = `product${i + 1}_name`;
       if (card[imgField]) {
         products.push({
           name: card[nameField] || `Product ${i + 1}`,
-          image: card[imgField]
+          image: card[imgField],
         });
       }
     }
     card.products = products;
 
-    // ✅ Construct videos array from link1 to link5
+    // Construct videos array
     const videoLinks = [];
     for (let i = 1; i <= 5; i++) {
       const link = card[`link${i}`];
@@ -267,8 +300,12 @@ router.get("/card/:slug", (req, res) => {
     card.videos = videoLinks;
 
     res.json({ card });
-  });
+  } catch (err) {
+    console.error("DB Error:", err);
+    res.status(500).json({ error: "Database error" });
+  }
 });
+
 // GET /api/auth/get-card/:url_slug
 router.get('/get-card/:url_slug', authenticateToken, async (req, res) => {
   try {
@@ -302,165 +339,125 @@ router.delete('/delete-card/:slug', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Error deleting card', error });
   }
 });
-router.put(
-  "/update-card/:url_slug",
-  authenticateToken,
-  upload.any(),
-  async (req, res) => {
-    const { url_slug } = req.params;
-    const userId = req.user.id;
+router.put("/update-card/:url_slug", authenticateToken, upload.any(), async (req, res) => {
+  const { url_slug } = req.params;
+  const userId = req.user.id;
 
-    try {
-      const files = req.files || [];
-      const body = req.body;
+  try {
+    const files = req.files || [];
+    const body = req.body;
 
-      // Get existing card
-      const [existingCard] = await new Promise((resolve, reject) => {
-        db.query(
-          "SELECT * FROM card WHERE url_slug = ? AND user_id = ?",
-          [url_slug, userId],
-          (err, result) => {
-            if (err) reject(err);
-            else resolve(result);
-          }
-        );
-      });
+    const [existingCards] = await db.query(
+      "SELECT * FROM card WHERE url_slug = ? AND user_id = ?",
+      [url_slug, userId]
+    );
 
-      if (!existingCard) {
-        return res.status(404).json({ success: false, error: "Card not found" });
-      }
-
-      // Logo
-      const logoFile = files.find((f) => f.fieldname === "logo");
-      const logoPath = logoFile
-        ? `/uploads/${logoFile.filename}`
-        : existingCard.logo;
-
-      // Products
-      const products = [];
-      for (let i = 0; i < 10; i++) {
-        const imgField = `product${i + 1}_img`;
-        const imageFile = files.find((f) => f.fieldname === imgField);
-        const imagePath = imageFile
-          ? `/uploads/${imageFile.filename}`
-          : existingCard[`product${i + 1}_img`];
-        products.push({
-          name: body[`product${i + 1}_name`] || "",
-          image: imagePath,
-        });
-      }
-
-      const videoLinks = [
-        body.video1 || "",
-        body.video2 || "",
-        body.video3 || "",
-        body.video4 || "",
-        body.video5 || "",
-      ];
-
-      const updatedValues = [
-        `${body.firstName} ${body.lastName}`,
-        body.position,
-        body.phone,
-        body.whatsapp,
-        body.address,
-        body.email,
-        body.website,
-        body.location,
-        body.established_date,
-        body.about,
-        body.facebook,
-        body.twitter,
-        body.instagram,
-        body.linkedin,
-        body.youtube,
-        body.pinterest,
-        ...videoLinks,
-        body.google_map,
-        body.bankName,
-        body.accountHolder,
-        body.accountNumber,
-        body.ifsc,
-        body.gst,
-        body.googlepay,
-        body.phonepe,
-        body.paytm,
-        ...products.flatMap((p) => [p.image, null, null]),
-        products.length,
-        logoPath,
-        body.razorpay_payment_id,
-        url_slug,
-        userId,
-      ];
-
-      const sql = `
-        UPDATE card SET
-          name = ?,
-          position = ?,
-          phone_number = ?,
-          alternate_phone_number = ?,
-          address = ?,
-          email = ?,
-          website = ?,
-          location = ?,
-          established_date = ?,
-          about_us = ?,
-          facebook_link = ?,
-          twitter_link = ?,
-          instagram_link = ?,
-          linkedin_link = ?,
-          youtube_link = ?,
-          pinterest_link = ?,
-          link1 = ?, link2 = ?, link3 = ?, link4 = ?, link5 = ?,
-          google_map = ?,
-          bank_name = ?,
-          account_holder_name = ?,
-          account_number = ?,
-          ifsc = ?,
-          gst = ?,
-          gpay = ?,
-          phonepay = ?,
-          paytm_number = ?,
-          product1_img = ?, product1_mrp = ?, product1_selling_price = ?,
-          product2_img = ?, product2_mrp = ?, product2_selling_price = ?,
-          product3_img = ?, product3_mrp = ?, product3_selling_price = ?,
-          product4_img = ?, product4_mrp = ?, product4_selling_price = ?,
-          product5_img = ?, product5_mrp = ?, product5_selling_price = ?,
-          product6_img = ?, product6_mrp = ?, product6_selling_price = ?,
-          product7_img = ?, product7_mrp = ?, product7_selling_price = ?,
-          product8_img = ?, product8_mrp = ?, product8_selling_price = ?,
-          product9_img = ?, product9_mrp = ?, product9_selling_price = ?,
-          product10_img = ?, product10_mrp = ?, product10_selling_price = ?,
-          count = ?,
-          logo = ?,
-          razorpay_payment_id = ?
-        WHERE url_slug = ? AND user_id = ?
-      `;
-
-      db.query(sql, updatedValues, (err, result) => {
-        if (err) {
-          console.error("DB error:", err);
-          return res.status(500).json({ success: false, error: "Database error" });
-        }
-        return res.status(200).json({ success: true, message: "Card updated successfully" });
-      });
-    } catch (err) {
-      console.error("Server error:", err.message);
-      return res.status(500).json({ success: false, error: "Server error" });
+    const existingCard = existingCards[0];
+    if (!existingCard) {
+      return res.status(404).json({ success: false, error: "Card not found" });
     }
+
+    const logoFile = files.find((f) => f.fieldname === "logo");
+    const logoPath = logoFile ? `/uploads/${logoFile.filename}` : existingCard.logo;
+
+    const products = [];
+    for (let i = 0; i < 10; i++) {
+      const imgField = `product${i + 1}_img`;
+      const imageFile = files.find((f) => f.fieldname === imgField);
+      const imagePath = imageFile ? `/uploads/${imageFile.filename}` : existingCard[`product${i + 1}_img`];
+      products.push({
+        name: body[`product${i + 1}_name`] || "",
+        image: imagePath,
+      });
+    }
+
+    const videoLinks = [
+      body.video1 || "",
+      body.video2 || "",
+      body.video3 || "",
+      body.video4 || "",
+      body.video5 || "",
+    ];
+
+    const updatedValues = [
+      `${body.firstName} ${body.lastName}`,
+      body.position,
+      body.phone,
+      body.whatsapp,
+      body.address,
+      body.email,
+      body.website,
+      body.location,
+      body.established_date,
+      body.about,
+      body.facebook,
+      body.twitter,
+      body.instagram,
+      body.linkedin,
+      body.youtube,
+      body.pinterest,
+      ...videoLinks,
+      body.google_map,
+      body.bankName,
+      body.accountHolder,
+      body.accountNumber,
+      body.ifsc,
+      body.gst,
+      body.googlepay,
+      body.phonepe,
+      body.paytm,
+      ...products.flatMap((p) => [p.image, null, null]),
+      products.length,
+      logoPath,
+      body.razorpay_payment_id,
+      url_slug,
+      userId,
+    ];
+
+    const sql = `
+      UPDATE card SET
+        name = ?, position = ?, phone_number = ?, alternate_phone_number = ?, address = ?,
+        email = ?, website = ?, location = ?, established_date = ?, about_us = ?,
+        facebook_link = ?, twitter_link = ?, instagram_link = ?, linkedin_link = ?, youtube_link = ?, pinterest_link = ?,
+        link1 = ?, link2 = ?, link3 = ?, link4 = ?, link5 = ?,
+        google_map = ?, bank_name = ?, account_holder_name = ?, account_number = ?, ifsc = ?, gst = ?,
+        gpay = ?, phonepay = ?, paytm_number = ?,
+        product1_img = ?, product1_mrp = ?, product1_selling_price = ?,
+        product2_img = ?, product2_mrp = ?, product2_selling_price = ?,
+        product3_img = ?, product3_mrp = ?, product3_selling_price = ?,
+        product4_img = ?, product4_mrp = ?, product4_selling_price = ?,
+        product5_img = ?, product5_mrp = ?, product5_selling_price = ?,
+        product6_img = ?, product6_mrp = ?, product6_selling_price = ?,
+        product7_img = ?, product7_mrp = ?, product7_selling_price = ?,
+        product8_img = ?, product8_mrp = ?, product8_selling_price = ?,
+        product9_img = ?, product9_mrp = ?, product9_selling_price = ?,
+        product10_img = ?, product10_mrp = ?, product10_selling_price = ?,
+        count = ?, logo = ?, razorpay_payment_id = ?
+      WHERE url_slug = ? AND user_id = ?
+    `;
+
+    const [result] = await db.query(sql, updatedValues);
+
+    return res.status(200).json({ success: true, message: "Card updated successfully" });
+  } catch (err) {
+    console.error("Server error:", err.message);
+    return res.status(500).json({ success: false, error: "Server error" });
   }
-);
+});
+
 
 router.get('/check-company-name/:name', async (req, res) => {
   const { name } = req.params;
+
   try {
-    const [result] = await db.query('SELECT 1 FROM cards WHERE company_name = ?', [name]);
-    res.json({ exists: result.length > 0 });
+    const [result] = await db.query('SELECT 1 FROM card WHERE company_name = ?', [name]);
+    res.json({ exists: result.length > 0 }); // true if company name exists
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ exists: false });
+    console.error("❌ DB Query Failed:", err);
+    res.status(500).json({ error: "Internal server error", exists: false });
   }
 });
+
 
 
 module.exports = router;
